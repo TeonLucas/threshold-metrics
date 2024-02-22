@@ -32,8 +32,7 @@ export METRIC_FACET=action,scope
 ```
 The `METRIC_NAME` specifies which field contains the timeslice aggregate values.
 The `METRIC_WHERE` is applied as a NRQL WHERE clause to filter to specific entities and metrics.
-The `METRIC_FACET` specifies which fields to apply as attributes on the dimensional metrics generated.
-The `entity.guid` field is automatically included as an attribute.
+The `METRIC_FACET` specifies which fields (`entity.guid` is automatically included) to apply as attributes on the dimensional metrics generated.
 
 Then you can run as follows:
 ```
