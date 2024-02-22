@@ -21,7 +21,8 @@ export NEW_RELIC_USER_KEY=YOUR_USER_API_KEY
 ```
 Let's look at a demo example NRQL query:
 ```
-SELECT apm.mobile.ui.thread.duration, action, scope FROM Metric WHERE appName = 'Acme Telco -Android' AND action LIKE '%onCreate'
+SELECT apm.mobile.ui.thread.duration, action, scope FROM Metric
+WHERE appName = 'Acme Telco -Android' AND action LIKE '%onCreate'
 ```
 The above query would be specified as follows:
 ```
