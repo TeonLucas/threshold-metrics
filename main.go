@@ -6,37 +6,27 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
+
+	"github.com/iancoleman/strcase"
 )
 
 const (
 	DefaultPollInterval = "1m"
 )
 
-// To parse JSON from APIs
-type EntitySummaries struct {
-	Data struct {
-		ByEntity []Entity `json:"byEntity"`
-	} `json:"data"`
-}
-type Entity struct {
-	Direction         string  `json:"direction"`
-	Depth             float32 `json:"depth"`
-	CallPath          string  `json:"entityCallPath"`
-	Guid              string  `json:"entityGuid"`
-	Count             int     `json:"count"`
-	ErrorCount        int     `json:"errorCount"`
-	Duration          float32 `json:"averageDurationMs"`
-	ExclusiveDuration float32 `json:"averageExclusiveDurationMs"`
-}
-
 // To store and analyze data
 type AccountData struct {
 	AccountId      string
 	MetricName     string
+	NewMetricName  string
 	MetricWhere    string
 	MetricFacet    string
+	Attributes     []string
+	Metrics        []Metric
+	Timestamp      int64
 	Threshold      float64
 	LicenseKey     string
 	UserKey        string
@@ -44,10 +34,10 @@ type AccountData struct {
 	GraphQlHeaders []string
 	MetricHeaders  []string
 	Details        Details
-	Response       []Entity
 	SampleTime     int64
 	PollInterval   time.Duration
 }
+
 type Details struct {
 	EntityGuid  string `json:"entityGuid"`
 	CurrentTime int64  `json:"-"`
@@ -59,6 +49,16 @@ func (data *AccountData) makeClient() {
 	data.Client = &http.Client{}
 	data.GraphQlHeaders = []string{"Content-Type:application/json", "API-Key:" + data.UserKey}
 	data.MetricHeaders = []string{"Content-Type:application/json", "Api-Key:" + data.LicenseKey}
+	// make list of attributes for each metric
+	attributes := strings.Split(data.MetricFacet, ",")
+	for _, attributeRaw := range attributes {
+		attribute := strings.TrimSpace(attributeRaw)
+		if attribute == "entity.guid" || attribute == "entityGuid" {
+			continue
+		}
+		data.Attributes = append(data.Attributes, attribute)
+	}
+	data.Attributes = append(data.Attributes, "entity.guid")
 }
 
 func main() {
@@ -66,12 +66,12 @@ func main() {
 
 	// Get required settings
 	data := AccountData{
-		AccountId:   os.Getenv("NEW_RELIC_ACCOUNT"),
-		MetricName:  os.Getenv("METRIC_NAME"),
-		MetricWhere: os.Getenv("METRIC_WHERE"),
-		MetricFacet: os.Getenv("METRIC_FACET"),
-		LicenseKey:  os.Getenv("NEW_RELIC_LICENSE_KEY"),
-		UserKey:     os.Getenv("NEW_RELIC_USER_KEY"),
+		AccountId:   strings.TrimSpace(os.Getenv("NEW_RELIC_ACCOUNT")),
+		MetricName:  strings.TrimSpace(os.Getenv("METRIC_NAME")),
+		MetricWhere: strings.TrimSpace(os.Getenv("METRIC_WHERE")),
+		MetricFacet: strings.TrimSpace(os.Getenv("METRIC_FACET")),
+		LicenseKey:  strings.TrimSpace(os.Getenv("NEW_RELIC_LICENSE_KEY")),
+		UserKey:     strings.TrimSpace(os.Getenv("NEW_RELIC_USER_KEY")),
 	}
 	if len(data.AccountId) == 0 {
 		log.Printf("Please set env var NEW_RELIC_ACCOUNT")
@@ -81,6 +81,7 @@ func main() {
 		log.Printf("Please set env var METRIC_NAME")
 		os.Exit(0)
 	}
+	data.NewMetricName = strcase.ToLowerCamel(data.MetricName) + "Threshold"
 	if len(data.MetricWhere) == 0 {
 		log.Printf("Please set env var METRIC_WHERE")
 		os.Exit(0)
@@ -117,8 +118,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error: could not parse env var POLL_INTERVAL: %s, must be a duration (ex: 1h)", err)
 	}
+	if data.PollInterval < time.Minute {
+		log.Fatalf("Error: POLL_INTERVAL %v, must be at least 1 minute", data.PollInterval)
+	}
 
-	log.Printf("Using account %s, metric %s", data.AccountId, data.MetricName)
+	log.Printf("Using account %s, queryting %s to generate metric %s", data.AccountId, data.MetricName, data.NewMetricName)
 	log.Printf("Poll interval is %s", data.PollInterval)
 
 	// Create GraphQl client
@@ -134,6 +138,8 @@ func main() {
 	}()
 
 	data.queryGraphQl()
+
+	data.makeMetrics()
 
 	return
 

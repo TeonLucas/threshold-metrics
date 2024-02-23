@@ -34,16 +34,42 @@ type GraphQlResult struct {
 type NrqlResult map[string]interface{}
 
 func (data *AccountData) parseResult(result NrqlResult) {
-	timestamp := int64(result["timestamp"].(float64))
-	metricValue := result[data.MetricName]
-	facetMap := make(map[string]string)
-	facetMap["entity.guid"] = fmt.Sprintf("%v", result["entity.guid"])
-	facets := strings.Split(data.MetricFacet, ",")
-	for _, facet := range facets {
-		key := strings.TrimSpace(facet)
-		facetMap[key] = fmt.Sprintf("%v", result[key])
+	var ok, valid bool
+	var value, timestampRaw, timeslice interface{}
+
+	// Get timestamp
+	timestampRaw, ok = result["timestamp"]
+	if !ok {
+		return
 	}
-	log.Printf("DEBUG facets %v: timestamp=%d value=%v", facetMap, timestamp, metricValue)
+	timestamp := int64(timestampRaw.(float64))
+
+	// Get metric aggretate values
+	timeslice, ok = result[data.MetricName]
+	if !ok {
+		return
+	}
+
+	// Get attributes
+	attributes := make(map[string]string)
+	for _, key := range data.Attributes {
+		value, ok = result[key]
+		if ok {
+			attributes[key] = fmt.Sprintf("%v", value)
+		}
+		if ok && key == "entity.guid" {
+			valid = true
+		}
+	}
+
+	// Make sure there is a Guid
+	if valid {
+		data.pushMetric(timestamp, timeslice, attributes)
+	}
+	// Advance the timestamp for next query
+	if timestamp > data.Timestamp {
+		data.Timestamp = timestamp
+	}
 }
 
 func (data *AccountData) queryGraphQl() {
@@ -52,8 +78,8 @@ func (data *AccountData) queryGraphQl() {
 	var j []byte
 
 	// Make graphQl request to lookup entity names by guid (if not already cached)
-	query := fmt.Sprintf("SELECT %s,%s,entity.guid FROM Metric WHERE %s LIMIT MAX SINCE 10 minutes ago",
-		data.MetricName, data.MetricFacet, data.MetricWhere)
+	query := fmt.Sprintf("SELECT %s, %s FROM Metric WHERE %s AND timestamp > %d LIMIT MAX SINCE 10 minutes ago",
+		data.MetricName, strings.Join(data.Attributes, ", "), data.MetricWhere, data.Timestamp)
 	log.Printf("DEBUG NRQL query: %q", query)
 	gQuery.Query = fmt.Sprintf(GraphQlQuery, data.AccountId, query)
 	j, err = json.Marshal(gQuery)
@@ -68,8 +94,7 @@ func (data *AccountData) queryGraphQl() {
 	if err != nil {
 		log.Printf("Error parsing GraphQl result: %v", err)
 	}
-	for i, result := range graphQlResult.Data.Actor.Account.Nrql.Results {
-		log.Printf("DEBUG parsing result %d", i+1)
+	for _, result := range graphQlResult.Data.Actor.Account.Nrql.Results {
 		data.parseResult(result)
 	}
 }
