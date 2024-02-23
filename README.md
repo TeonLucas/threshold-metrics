@@ -19,6 +19,11 @@ export THRESHOLD=TARGET_THRESHOLD
 export NEW_RELIC_LICENSE_KEY=YOUR_LICENSE_KEY
 export NEW_RELIC_USER_KEY=YOUR_USER_API_KEY
 ```
+You can optionally set the polling interval (default 1m):
+```
+export POLL_INTERVAL=5m
+```
+
 Let's look at a demo example NRQL query:
 ```
 SELECT apm.mobile.ui.thread.duration, action, scope FROM Metric
