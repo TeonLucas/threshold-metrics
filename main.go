@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gregscott94/z-table-golang"
 	"github.com/iancoleman/strcase"
 )
 
@@ -28,6 +29,7 @@ type AccountData struct {
 	Metrics        []Metric
 	Timestamp      int64
 	Threshold      float64
+	ZTable         *ztable.ZTable
 	LicenseKey     string
 	UserKey        string
 	Client         *http.Client
@@ -36,6 +38,7 @@ type AccountData struct {
 	Details        Details
 	SampleTime     int64
 	PollInterval   time.Duration
+	Since          int64
 }
 
 type Details struct {
@@ -59,19 +62,34 @@ func (data *AccountData) makeClient() {
 		data.Attributes = append(data.Attributes, attribute)
 	}
 	data.Attributes = append(data.Attributes, "entity.guid")
+	data.ZTable = ztable.NewZTable(nil)
 }
 
 func main() {
-	var err error
+	// Get poll interval
+	pollInterval := os.Getenv("POLL_INTERVAL")
+	if len(pollInterval) == 0 {
+		pollInterval = DefaultPollInterval
+	}
+	pollIntervalDuration, err := time.ParseDuration(pollInterval)
+	if err != nil {
+		log.Fatalf("Error: could not parse env var POLL_INTERVAL: %s, must be a duration (ex: 1h)", err)
+	}
+	if pollIntervalDuration < time.Minute {
+		log.Fatalf("Error: POLL_INTERVAL %v, must be at least 1 minute", pollIntervalDuration)
+	}
+	pollIntervalDuration = pollIntervalDuration.Round(time.Minute)
 
 	// Get required settings
 	data := AccountData{
-		AccountId:   strings.TrimSpace(os.Getenv("NEW_RELIC_ACCOUNT")),
-		MetricName:  strings.TrimSpace(os.Getenv("METRIC_NAME")),
-		MetricWhere: strings.TrimSpace(os.Getenv("METRIC_WHERE")),
-		MetricFacet: strings.TrimSpace(os.Getenv("METRIC_FACET")),
-		LicenseKey:  strings.TrimSpace(os.Getenv("NEW_RELIC_LICENSE_KEY")),
-		UserKey:     strings.TrimSpace(os.Getenv("NEW_RELIC_USER_KEY")),
+		AccountId:    strings.TrimSpace(os.Getenv("NEW_RELIC_ACCOUNT")),
+		MetricName:   strings.TrimSpace(os.Getenv("METRIC_NAME")),
+		MetricWhere:  strings.TrimSpace(os.Getenv("METRIC_WHERE")),
+		MetricFacet:  strings.TrimSpace(os.Getenv("METRIC_FACET")),
+		LicenseKey:   strings.TrimSpace(os.Getenv("NEW_RELIC_LICENSE_KEY")),
+		UserKey:      strings.TrimSpace(os.Getenv("NEW_RELIC_USER_KEY")),
+		PollInterval: pollIntervalDuration,
+		Since:        int64((pollIntervalDuration + time.Minute).Minutes()),
 	}
 	if len(data.AccountId) == 0 {
 		log.Printf("Please set env var NEW_RELIC_ACCOUNT")
@@ -109,19 +127,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Get poll interval
-	pollInterval := os.Getenv("POLL_INTERVAL")
-	if len(pollInterval) == 0 {
-		pollInterval = DefaultPollInterval
-	}
-	data.PollInterval, err = time.ParseDuration(pollInterval)
-	if err != nil {
-		log.Fatalf("Error: could not parse env var POLL_INTERVAL: %s, must be a duration (ex: 1h)", err)
-	}
-	if data.PollInterval < time.Minute {
-		log.Fatalf("Error: POLL_INTERVAL %v, must be at least 1 minute", data.PollInterval)
-	}
-
 	log.Printf("Using account %s, queryting %s to generate metric %s", data.AccountId, data.MetricName, data.NewMetricName)
 	log.Printf("Poll interval is %s", data.PollInterval)
 
@@ -136,12 +141,6 @@ func main() {
 		log.Printf("Process %v - Shutting down\n", sigs)
 		os.Exit(0)
 	}()
-
-	data.queryGraphQl()
-
-	data.makeMetrics()
-
-	return
 
 	// Start poll loop
 	log.Println("Starting polling loop")

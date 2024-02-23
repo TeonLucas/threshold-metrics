@@ -78,9 +78,11 @@ func (data *AccountData) queryGraphQl() {
 	var j []byte
 
 	// Make graphQl request to lookup entity names by guid (if not already cached)
-	query := fmt.Sprintf("SELECT %s, %s FROM Metric WHERE %s AND timestamp > %d LIMIT MAX SINCE 10 minutes ago",
-		data.MetricName, strings.Join(data.Attributes, ", "), data.MetricWhere, data.Timestamp)
-	log.Printf("DEBUG NRQL query: %q", query)
+	query := fmt.Sprintf("SELECT %s, %s FROM Metric WHERE %s AND timestamp > %d LIMIT MAX SINCE %d minutes ago",
+		data.MetricName, strings.Join(data.Attributes, ", "), data.MetricWhere, data.Timestamp, data.Since)
+
+	//log.Printf("DEBUG NRQL query: %q", query)
+
 	gQuery.Query = fmt.Sprintf(GraphQlQuery, data.AccountId, query)
 	j, err = json.Marshal(gQuery)
 	if err != nil {

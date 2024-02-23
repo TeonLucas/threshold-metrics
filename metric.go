@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"math"
-
-	"gonum.org/v1/gonum/stat"
 )
 
 const (
@@ -26,21 +24,21 @@ type Metric struct {
 type Attributes map[string]string
 
 func (data *AccountData) countAbove(timeslice interface{}) (countAbove float64) {
-	log.Printf("DEBUG pushing metric %v", timeslice)
-
 	aggregate := timeslice.(map[string]interface{})
-	average := aggregate["total"].(float64)
-	if average == 0 {
+	count := aggregate["count"].(float64)
+	mean := aggregate["total"].(float64)
+	if mean == 0 {
+		//log.Printf("DEBUG count=%f mean=%f countAbove=%f", count, 0.0, 0.0)
 		return 0
 	}
-	count := aggregate["count"].(float64)
 	std := math.Sqrt(aggregate["sumOfSquares"].(float64) / count)
-	zscore := stat.StdScore(data.Threshold, average, std)
-	countAbove = count - zscore*count
+	zscore := (data.Threshold - mean) / std
+	area := 1 - data.ZTable.FindPercentage(zscore)
+	countAbove = area * count
 	if countAbove < 0 {
 		countAbove = 0
 	}
-	log.Printf("DEBUG count=%f avg=%f std=%f z-score=%f countAbove=%f", count, average, std, zscore, countAbove)
+	//log.Printf("DEBUG count=%f mean=%f countAbove=%f", count, mean, countAbove)
 	return
 }
 
@@ -67,6 +65,7 @@ func (data *AccountData) makeMetrics() {
 			log.Printf("Error creating Metric payload: %v", err)
 		}
 		log.Printf("Sending %d metrics to the metric api", len(data.Metrics))
+
 		//log.Printf("DEBUG metrics: %s", j)
 
 		b := retryQuery(data.Client, "POST", MetricEndoint, string(j), data.MetricHeaders)

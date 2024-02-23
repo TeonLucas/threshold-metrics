@@ -1,3 +1,5 @@
+github.com/gregscott94/z-table-golang v1.0.0 h1:0n1gQfaZTylqjO4ekGOpgVqYYnEf4dNb99572/89j7s=
+github.com/gregscott94/z-table-golang v1.0.0/go.mod h1:Ry4hDY4R7Jn5HfQuWfI7H5GNRDqG4lyNj8SP9xvfPkY=
 github.com/iancoleman/strcase v0.3.0 h1:nTXanmYxhfFAMjZL34Ov6gkzEsSJZ5DbhxWjvSASxEI=
 github.com/iancoleman/strcase v0.3.0/go.mod h1:iwCmte+B7n89clKwxIoIXy/HfoL7AsD47ZCWhYzw7ho=
 golang.org/x/exp v0.0.0-20230321023759-10a507213a29 h1:ooxPy7fPvB4kwsA2h+iBNHkAbp/4JxTSwCmvdjEYmug=
