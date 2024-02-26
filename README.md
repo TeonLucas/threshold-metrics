@@ -39,7 +39,16 @@ The `METRIC_NAME` specifies which field contains the timeslice aggregate values.
 The `METRIC_WHERE` is applied as a NRQL WHERE clause to filter to specific entities and metrics.
 The `METRIC_FACET` specifies which fields (`entity.guid` is automatically included) to apply as attributes on the dimensional metrics generated.
 
+Then we want to set a THRESHOLD t1, which will be used to find the area shown below:
+![Threhold calculation](https://github.com/TeonLucas/threshold-metrics/blob/main/threshold-diagram.png)
+For example,
+```
+export THRESHOLD=0.5
+```
+
 Then you can run as follows:
 ```
 ./threshold-metrics
 ```
+
+This will generate a dimensional metric applying the formula for a normal distribution to each 1-minute timeslice metric aggregate.
