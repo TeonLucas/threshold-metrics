@@ -51,4 +51,4 @@ Then you can run as follows:
 ./threshold-metrics
 ```
 
-This will generate a dimensional metric applying the formula for a normal distribution to each 1-minute timeslice metric aggregate.
+This will generate a dimensional metric, calculating the count over threshold in a normal distribution, to each 1-minute timeslice metric aggregate.
