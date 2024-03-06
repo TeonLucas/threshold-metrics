@@ -36,7 +36,13 @@ func (data *AccountData) countAbove(timeslice interface{}) (countAbove float64) 
 	}
 	std := math.Sqrt(aggregate["sumOfSquares"].(float64) / count)
 	zscore := (data.Threshold - mean) / std
-	area := 1 - data.ZTable.FindPercentage(zscore)
+	var percentage float64
+	if zscore > 4 {
+		percentage = 1.0
+	} else {
+		percentage = data.ZTable.FindPercentage(zscore)
+	}
+	area := 1 - percentage
 	countAbove = area * count
 	if countAbove < 0 {
 		countAbove = 0
