@@ -26,6 +26,9 @@ type Attributes map[string]string
 func (data *AccountData) countAbove(timeslice interface{}) (countAbove float64) {
 	aggregate := timeslice.(map[string]interface{})
 	count := aggregate["count"].(float64)
+	if count == 0.0 {
+		return 0
+	}
 	mean := aggregate["total"].(float64) / count
 	if mean == 0 {
 		//log.Printf("DEBUG count=%f mean=%f countAbove=%f", count, 0.0, 0.0)
@@ -38,7 +41,7 @@ func (data *AccountData) countAbove(timeslice interface{}) (countAbove float64) 
 	if countAbove < 0 {
 		countAbove = 0
 	}
-	//log.Printf("DEBUG count=%f mean=%f countAbove=%f", count, mean, countAbove)
+	//log.Printf("DEBUG countAbove=%f count=%f mean=%f threshold=%f, timeslice=%+v", countAbove, count, mean, data.Threshold, timeslice)
 	return
 }
 
