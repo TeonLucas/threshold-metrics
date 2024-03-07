@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gregscott94/z-table-golang"
+	ztable "github.com/gregscott94/z-table-golang"
 	"github.com/iancoleman/strcase"
 )
 
@@ -89,7 +89,7 @@ func main() {
 		LicenseKey:   strings.TrimSpace(os.Getenv("NEW_RELIC_LICENSE_KEY")),
 		UserKey:      strings.TrimSpace(os.Getenv("NEW_RELIC_USER_KEY")),
 		PollInterval: pollIntervalDuration,
-		Since:        int64((pollIntervalDuration + time.Minute).Minutes()),
+		Since:        int64((pollIntervalDuration).Minutes()),
 	}
 	if len(data.AccountId) == 0 {
 		log.Printf("Please set env var NEW_RELIC_ACCOUNT")
@@ -153,6 +153,9 @@ func main() {
 
 		// Make results into metrics
 		data.makeMetrics()
+
+		// Save results to CSV
+		//data.makeMetricsToCSV()
 
 		remainder := data.PollInterval - time.Now().Sub(startTime)
 		if remainder > 0 {
