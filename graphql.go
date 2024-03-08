@@ -9,7 +9,7 @@ import (
 
 const (
 	GraphQlEndpoint = "https://api.newrelic.com/graphql"
-	GraphQlQuery    = "{actor {account(id: %s) {nrql (query: %q) {results}}}}"
+	GraphQlQuery    = "{actor {account(id: %s) {nrql (timeout: 120, query: %q) {results}}}}"
 )
 
 type GraphQlPayload struct {
