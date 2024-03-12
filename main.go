@@ -99,7 +99,7 @@ func main() {
 		log.Printf("Please set env var METRIC_NAME")
 		os.Exit(0)
 	}
-	data.NewMetricName = strcase.ToLowerCamel(data.MetricName) + "Threshold"
+	data.NewMetricName = strcase.ToLowerCamel(data.MetricName) + "Threshold" + "test3"
 	if len(data.MetricWhere) == 0 {
 		log.Printf("Please set env var METRIC_WHERE")
 		os.Exit(0)
@@ -143,8 +143,8 @@ func main() {
 	}()
 
 	// Start poll loop
-	//indefinitePollLoop(&data)
-	lastThreeMonthsPoolLoop(&data)
+	indefinitePollLoop(&data)
+	// lastThreeMonthsPoolLoop(&data)
 }
 
 func lastThreeMonthsPoolLoop(data *AccountData) {
@@ -169,10 +169,10 @@ func lastThreeMonthsPoolLoop(data *AccountData) {
 		data.queryGraphQlForDate(startRange, endRange)
 
 		// Make results into metrics
-		// data.makeMetrics()
+		data.makeMetrics()
 
 		// Save results to CSV
-		data.makeMetricsToCSV()
+		// data.makeMetricsToCSV()
 
 		// add threshold to end date
 		startDate = endRange
@@ -189,10 +189,10 @@ func indefinitePollLoop(data *AccountData) {
 		data.queryGraphQl()
 
 		// Make results into metrics
-		// data.makeMetrics()
+		data.makeMetrics()
 
 		// Save results to CSV
-		data.makeMetricsToCSV()
+		// data.makeMetricsToCSV()
 
 		remainder := data.PollInterval - time.Now().Sub(startTime)
 		if remainder > 0 {

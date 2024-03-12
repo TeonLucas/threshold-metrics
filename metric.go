@@ -25,13 +25,10 @@ type Metric struct {
 	Name       string     `json:"name"`
 	Type       string     `json:"type"`
 	Value      float64    `json:"value"`
-	Count      float64    `json:"total"`
-	Mean       float64    `json:"mean"`
-	OS         string     `json:"os"`
 	Timestamp  int64      `json:"timestamp"`
 	Attributes Attributes `json:"attributes"`
 }
-type Attributes map[string]string
+type Attributes map[string]any
 
 func (data *AccountData) count(timeslice interface{}) (count float64) {
 	aggregate := timeslice.(map[string]interface{})
@@ -40,15 +37,7 @@ func (data *AccountData) count(timeslice interface{}) (count float64) {
 	return
 }
 
-func (data *AccountData) mean(timeslice interface{}) (mean float64) {
-	aggregate := timeslice.(map[string]interface{})
-	count := aggregate["count"].(float64)
-	mean = aggregate["total"].(float64) / count
-	//log.Printf("DEBUG count=%f mean=%f", count, mean)
-	return
-}
-
-func (data *AccountData) countAbove(timeslice interface{}) (countAbove float64) {
+func (data *AccountData) countBelow(timeslice interface{}) (countAbove float64) {
 	aggregate := timeslice.(map[string]interface{})
 	count := aggregate["count"].(float64)
 	if count == 0.0 {
@@ -77,7 +66,7 @@ func (data *AccountData) countAbove(timeslice interface{}) (countAbove float64) 
 }
 
 func (data *AccountData) os(attributes Attributes) (os string) {
-	var appName = attributes["appName"]
+	var appName = attributes["appName"].(string)
 	os = ""
 	if strings.Contains(appName, "android") {
 		os = "android"
@@ -91,11 +80,10 @@ func (data *AccountData) pushMetric(timestamp int64, timeslice interface{}, attr
 	var metric Metric
 	metric.Name = data.NewMetricName
 	metric.Type = "gauge"
-	metric.Value = data.countAbove(timeslice)
-	metric.Count = data.count(timeslice)
-	metric.Mean = data.mean(timeslice)
-	metric.OS = data.os(attributes)
+	metric.Value = data.countBelow(timeslice)
 	metric.Timestamp = timestamp
+	attributes["TotalCount"] = data.count(timeslice)
+	attributes["os"] = data.os(attributes)
 	metric.Attributes = attributes
 	data.Metrics = append(data.Metrics, metric)
 }
@@ -114,7 +102,7 @@ func (data *AccountData) makeMetrics() {
 		}
 		log.Printf("Sending %d metrics to the metric api", len(data.Metrics))
 
-		//log.Printf("DEBUG metrics: %s", j)
+		// log.Printf("DEBUG metrics: %s", j)
 
 		b := retryQuery(data.Client, "POST", MetricEndoint, string(j), data.MetricHeaders)
 		log.Printf("Submitted %s", b)
@@ -164,10 +152,9 @@ func saveCSV(filePath string, data *AccountData) error {
 	headers := []string{
 		"Name",
 		"Type",
-		"Value",
+		"Count Below",
 		"Total Count",
 		"Threshold",
-		"Mean",
 		"OS",
 		"Timestamp",
 		"AppName",
@@ -184,10 +171,9 @@ func saveCSV(filePath string, data *AccountData) error {
 			metric.Name,
 			metric.Type,
 			fmt.Sprintf("%f", metric.Value),
-			fmt.Sprintf("%f", metric.Count),
+			fmt.Sprintf("%f", metric.Attributes["TotalCount"]),
 			fmt.Sprintf("%f", data.Threshold),
-			fmt.Sprintf("%f", metric.Mean),
-			fmt.Sprintf("%v", metric.OS),
+			fmt.Sprintf("%v", metric.Attributes["os"]),
 			fmt.Sprintf("%d", metric.Timestamp),
 			fmt.Sprintf("%v", metric.Attributes["appName"]),
 			fmt.Sprintf("%v", metric.Attributes),

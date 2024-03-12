@@ -52,7 +52,7 @@ func (data *AccountData) parseResult(result NrqlResult) {
 	}
 
 	// Get attributes
-	attributes := make(map[string]string)
+	attributes := make(map[string]any)
 	for _, key := range data.Attributes {
 		value, ok = result[key]
 		if ok {
@@ -88,7 +88,7 @@ func (data *AccountData) queryGraphQl() {
 	query := fmt.Sprintf("SELECT %s, %s FROM Metric WHERE %s AND timestamp > %d LIMIT MAX SINCE %d minutes ago",
 		data.MetricName, strings.Join(data.Attributes, ", "), data.MetricWhere, data.Timestamp, data.Since)
 
-	log.Printf("DEBUG NRQL query: %q", query)
+	// log.Printf("DEBUG NRQL query: %q", query)
 
 	gQuery.Query = fmt.Sprintf(GraphQlQuery, data.AccountId, query)
 	j, err = json.Marshal(gQuery)
