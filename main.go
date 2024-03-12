@@ -143,6 +143,43 @@ func main() {
 	}()
 
 	// Start poll loop
+	//indefinitePollLoop(&data)
+	lastThreeMonthsPoolLoop(&data)
+}
+
+func lastThreeMonthsPoolLoop(data *AccountData) {
+	log.Println("Starting last 3 polling loop")
+
+	var endDateTime = time.Now()
+	var endDate = float64(endDateTime.Unix())
+	log.Printf("End date time: %s", endDateTime)
+	log.Printf("End date: %f", endDate)
+	// Set start time to 3 months ago
+	var startDateTime = endDateTime.AddDate(0, -3, 1)
+	var startDate = float64(startDateTime.Unix())
+	log.Printf("Start date time: %s", startDateTime)
+	log.Printf("Start date: %f", startDate)
+
+	// while start date is less than end date
+	for startDate < endDate {
+		var startRange = startDate
+		var endRange = startDate + data.PollInterval.Seconds()
+
+		// Query timeslice metrics
+		data.queryGraphQlForDate(startRange, endRange)
+
+		// Make results into metrics
+		// data.makeMetrics()
+
+		// Save results to CSV
+		data.makeMetricsToCSV()
+
+		// add threshold to end date
+		startDate = endRange
+	}
+}
+
+func indefinitePollLoop(data *AccountData) {
 	log.Println("Starting polling loop")
 	for {
 		startTime := time.Now()
@@ -152,10 +189,10 @@ func main() {
 		data.queryGraphQl()
 
 		// Make results into metrics
-		data.makeMetrics()
+		// data.makeMetrics()
 
 		// Save results to CSV
-		//data.makeMetricsToCSV()
+		data.makeMetricsToCSV()
 
 		remainder := data.PollInterval - time.Now().Sub(startTime)
 		if remainder > 0 {

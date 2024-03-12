@@ -139,6 +139,9 @@ func (data *AccountData) makeMetricsToCSV() {
 			log.Printf("Saved %d metrics to CSV on the host machine", len(data.Metrics))
 		}
 	}
+
+	// Clear metrics that were sent
+	data.Metrics = nil
 }
 
 func saveCSV(filePath string, data *AccountData) error {

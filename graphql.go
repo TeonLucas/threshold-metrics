@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 )
 
 const (
@@ -62,8 +63,14 @@ func (data *AccountData) parseResult(result NrqlResult) {
 		}
 	}
 
+	aggregate := timeslice.(map[string]interface{})
+	count := aggregate["count"].(float64)
+	if count == 0.0 {
+		count = 0
+	}
+
 	// Make sure there is a Guid
-	if valid {
+	if valid && count > 0 {
 		data.pushMetric(timestamp, timeslice, attributes)
 	}
 	// Advance the timestamp for next query
@@ -81,7 +88,44 @@ func (data *AccountData) queryGraphQl() {
 	query := fmt.Sprintf("SELECT %s, %s FROM Metric WHERE %s AND timestamp > %d LIMIT MAX SINCE %d minutes ago",
 		data.MetricName, strings.Join(data.Attributes, ", "), data.MetricWhere, data.Timestamp, data.Since)
 
-	//log.Printf("DEBUG NRQL query: %q", query)
+	log.Printf("DEBUG NRQL query: %q", query)
+
+	gQuery.Query = fmt.Sprintf(GraphQlQuery, data.AccountId, query)
+	j, err = json.Marshal(gQuery)
+	if err != nil {
+		log.Printf("Error creating GraphQl query: %v", err)
+	}
+
+	b := retryQuery(data.Client, "POST", GraphQlEndpoint, string(j), data.GraphQlHeaders)
+	var graphQlResult GraphQlResult
+	log.Printf("Parsing response %d bytes", len(b))
+	err = json.Unmarshal(b, &graphQlResult)
+	if err != nil {
+		log.Printf("Error parsing GraphQl result: %v", err)
+	}
+	for _, result := range graphQlResult.Data.Actor.Account.Nrql.Results {
+		data.parseResult(result)
+	}
+}
+
+func (data *AccountData) queryGraphQlForDate(rangeStart float64, rangeEnd float64) {
+	var err error
+	var gQuery GraphQlPayload
+	var j []byte
+
+	rangeStartFormatted := time.Unix(int64(rangeStart), 0).Format("2006-01-02 15:04:05")
+	// log.Printf("rangeStartFormatted: %s", rangeStartFormatted)
+
+	rangeEndFormatted := time.Unix(int64(rangeEnd), 0).Format("2006-01-02 15:04:05")
+	// log.Printf("rangeEndFormatted: %s", rangeEndFormatted)
+
+	dateRange := fmt.Sprintf("SINCE '%s' UNTIL '%s'", rangeStartFormatted, rangeEndFormatted)
+
+	// Make graphQl request to lookup entity names by guid (if not already cached)
+	query := fmt.Sprintf("SELECT %s, %s FROM Metric WHERE %s AND timestamp > %d LIMIT MAX %s",
+		data.MetricName, strings.Join(data.Attributes, ", "), data.MetricWhere, data.Timestamp, dateRange)
+
+	// log.Printf("DEBUG NRQL query: %q", query)
 
 	gQuery.Query = fmt.Sprintf(GraphQlQuery, data.AccountId, query)
 	j, err = json.Marshal(gQuery)
