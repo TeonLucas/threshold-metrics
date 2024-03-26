@@ -99,7 +99,7 @@ func main() {
 		log.Printf("Please set env var METRIC_NAME")
 		os.Exit(0)
 	}
-	data.NewMetricName = strcase.ToLowerCamel(data.MetricName) + "Threshold" + "test3"
+	data.NewMetricName = strcase.ToLowerCamel(data.MetricName) + "Threshold80ms"
 	if len(data.MetricWhere) == 0 {
 		log.Printf("Please set env var METRIC_WHERE")
 		os.Exit(0)
